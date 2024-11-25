@@ -1,5 +1,3 @@
-from unicodedata import digit
-from attr import NOTHING
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 import os
@@ -66,13 +64,33 @@ class BettingWorker:
 
     def _deposit(self):
         cherry = self._find_cherry()
-        cherry.click()
+
+        # Calculate the number of clicks based on the number of losses
+        clicks = 2 ** self._nmbr_of_loses
+
+        for _ in range(clicks):
+            cherry.click()
 
     def _get_driver(self):
         # Set up the WebDriver
         driver = webdriver.Chrome()
         driver.get("https://livecasino.bet365.com/Play/SuperMegaUltra")
         return driver
+    
+    def _get_balance(self):
+        balance = self.driver.find_element(By.CLASS_NAME, "balance__value")
+        return balance.text
+
+    def _check_new_round_data(self):  
+        new_balance = self._get_balance()
+
+        if new_balance > self._balance:
+            self._nmbr_of_loses = 0
+        else:
+            self._nmbr_of_loses += 1
+
+        self._balance = new_balance
+
 
     def start_betting(self):
         # Set up the WebDriver
@@ -82,14 +100,20 @@ class BettingWorker:
 
         self._switch_to_game_frame()
 
-        while self._waiting_for_next_round():
-            time.sleep(1)
+        self._balance = self._get_balance()
+        self._nmbr_of_loses = 0
 
-        # Wait one second after waiting ends so the new round can start
-        time.sleep(1)
-        self._deposit()
-        
-        while not self._waiting_for_next_round():
+        while True:
+            while self._waiting_for_next_round():
+                time.sleep(1)
+            
+            self._check_new_round_data()  
+
+            # Wait one second after waiting ends so the new round can start
             time.sleep(1)
+            self._deposit()
+            
+            while not self._waiting_for_next_round():
+                time.sleep(1)
 
         self.driver.quit()
