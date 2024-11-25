@@ -47,14 +47,18 @@ class BettingWorker:
         self.driver.switch_to.frame(game_frame)
         self.driver.switch_to.frame(0)
 
-    def _waiting_for_next_round(self):
-        dealer_message_text = self.driver.find_element(By.CLASS_NAME, "dealer-message-text")
+    def _can_place_bets(self):
+        try:
+            dealer_message = self.driver.find_element(By.CLASS_NAME, "game-table__controls-panel-centered")
 
-        # If container text contains "Wait" return true
-        if dealer_message_text.text == "":
+            # If container text contains "Place your bets" return true
+            if "PLACE YOUR BETS" in dealer_message.text:
+                return True
+            
             return False
-        
-        return True
+        except:
+            return False
+
 
     def _find_cherry(self):
         interactive_overlays = self.driver.find_elements(By.CLASS_NAME, "interactive-overlay--Rm6da")
@@ -67,9 +71,11 @@ class BettingWorker:
 
         # Calculate the number of clicks based on the number of losses
         clicks = 2 ** self._nmbr_of_loses
-
+        print("number of clicks: ", clicks)
         for _ in range(clicks):
             cherry.click()
+            time.sleep(0.05)
+            print("Clicking cherry")
 
     def _get_driver(self):
         # Set up the WebDriver
@@ -84,13 +90,19 @@ class BettingWorker:
     def _check_new_round_data(self):  
         new_balance = self._get_balance()
 
-        if new_balance > self._balance:
+        if new_balance >= self._balance:
             self._nmbr_of_loses = 0
         else:
             self._nmbr_of_loses += 1
+        print("Number of losses: ", self._nmbr_of_loses)
 
         self._balance = new_balance
 
+    def _set_chip_level(self):
+        # Find the chip level element by class name
+        chips = self.driver.find_elements(By.CLASS_NAME, "chip__label")
+        chips[0].click()
+        print(chips)
 
     def start_betting(self):
         # Set up the WebDriver
@@ -103,8 +115,14 @@ class BettingWorker:
         self._balance = self._get_balance()
         self._nmbr_of_loses = 0
 
+        while not self._can_place_bets():
+            time.sleep(1)
+        
+        time.sleep(1)
+        self._set_chip_level()
+
         while True:
-            while self._waiting_for_next_round():
+            while not self._can_place_bets():
                 time.sleep(1)
             
             self._check_new_round_data()  
@@ -113,7 +131,8 @@ class BettingWorker:
             time.sleep(1)
             self._deposit()
             
-            while not self._waiting_for_next_round():
+            while self._can_place_bets():
                 time.sleep(1)
-
+        
+        # this is currently uncallable
         self.driver.quit()
