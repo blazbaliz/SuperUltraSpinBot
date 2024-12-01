@@ -74,7 +74,7 @@ class BettingWorker:
         print("number of clicks: ", clicks)
         for _ in range(clicks):
             cherry.click()
-            time.sleep(0.05)
+            time.sleep(0.02)
             print("Clicking cherry")
 
     def _get_driver(self):
