@@ -1,5 +1,6 @@
 from dotenv import load_dotenv
-from utils.helpers import get_driver, login, switch_to_game_frame, get_bet
+from utils.helpers import get_driver, login, switch_to_game_frame
+from utils.betting_factory import get_bet
 from betting_worker import BettingWorker
 
 # Load environment variables from .env file
